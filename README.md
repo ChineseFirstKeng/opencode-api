@@ -1,34 +1,34 @@
 <p align="right">
-  <a href="README.zh.md">中文</a> | <strong>English</strong>
+  <strong>中文</strong> | <a href="README.md">English</a>
 </p>
 
 # opencode-api
 
-Proxy service that translates Anthropic API format to OpenCode Go API format. Use OpenCode models with Claude Code and other Anthropic-compatible tools.
+一个代理服务，将 Anthropic API 格式转换为 OpenCode Go API 格式。让你在 Claude Code 和其他兼容 Anthropic 的工具中使用 OpenCode 模型。
 
-## Features
+## 功能
 
-- **Anthropic ↔ OpenAI format translation** — Converts Anthropic Messages API requests to OpenAI Chat Completions format and translates responses back
-- **Streaming SSE translation** — Real-time chunk-by-chunk translation of streaming responses with full Anthropic event semantics
-- **Dual-path routing** — Anthropic-native models (MiniMax) forwarded as-is; all other models translated through OpenAI path
-- **Tool use / Function calling** — Full support for Anthropic tool_use → OpenAI function calls and back, including `tool_choice` mapping
-- **OpenAI-compatible endpoint** — `/v1/chat/completions` for tools that speak OpenAI format natively
-- **Embeddings support** — `/v1/embeddings` passthrough to OpenCode
-- **Image support** — Base64 images in Anthropic content blocks converted to OpenAI image_url format
-- **Thinking / Reasoning** — Thinking blocks preserved and translated
-- **Token estimation** — Realistic `count_tokens` estimation
-- **Rate limiting** — Optional configurable rate limiter
-- **Flexible auth** — API key accepted via `x-api-key` header, `Authorization: Bearer` header, or environment variable
+- **Anthropic ↔ OpenAI 格式转换** — 将 Anthropic Messages API 请求转为 OpenAI Chat Completions 格式，再将响应转回
+- **流式 SSE 翻译** — 实时逐块翻译流式响应，完整保留 Anthropic 事件语义
+- **双路径路由** — 原生 Anthropic 模型（MiniMax）直接转发；其余模型通过 OpenAI 路径翻译
+- **工具调用** — 完整支持 Anthropic tool_use ↔ OpenAI function calls，包括 `tool_choice` 映射
+- **OpenAI 兼容端点** — `/v1/chat/completions` 供原生 OpenAI 客户端使用
+- **Embeddings 支持** — `/v1/embeddings` 透传到 OpenCode
+- **图片支持** — Anthropic 内容块中的 Base64 图片自动转为 OpenAI image_url 格式
+- **思考/推理** — 保留并翻译 thinking 块
+- **Token 估算** — `count_tokens` 真实估算而非固定返回 0
+- **频率限制** — 可选的可配置速率限制器
+- **灵活认证** — 支持通过 `x-api-key` 头、`Authorization: Bearer` 头或环境变量传入 API Key
 
-## Installation
+## 安装
 
-### Global Install (npm)
+### 全局安装
 
 ```bash
 npm install -g opencode-api
 ```
 
-### Local Development
+### 本地开发
 
 ```bash
 git clone https://github.com/ChineseFirstKeng/opencode-api.git
@@ -37,23 +37,23 @@ npm install
 cp .env.example .env
 ```
 
-## Quick Start
+## 快速开始
 
 ```bash
-# Global
+# 全局启动
 opencode-api start
 
-# Local dev
+# 本地开发
 npm run dev
 ```
 
-The proxy starts at `http://localhost:4141`. Check `http://localhost:4141/health` to verify.
+代理启动于 `http://localhost:4141`。访问 `http://localhost:4141/health` 确认运行状态。
 
-## Usage
+## 使用方式
 
-### With Claude Code
+### 配合 Claude Code
 
-Claude passes the API key via `ANTHROPIC_AUTH_TOKEN` env var, which is sent as the `x-api-key` header:
+Claude 通过 `ANTHROPIC_AUTH_TOKEN` 环境变量传入 API Key，代理将其作为 `x-api-key` 请求头：
 
 ```bash
 ANTHROPIC_BASE_URL=http://localhost:4141 \
@@ -62,7 +62,7 @@ ANTHROPIC_MODEL=qwen3.6-plus \
 claude
 ```
 
-### With .claude/settings.json
+### 通过配置文件 .claude/settings.json
 
 ```json
 {
@@ -77,31 +77,31 @@ claude
 }
 ```
 
-### With curl (Anthropic format)
+### Anthropic 格式调用
 
 ```bash
 curl -X POST http://localhost:4141/v1/messages \
   -H "Content-Type: application/json" \
   -H "x-api-key: your-opencode-go-key" \
-  -d '{"model": "qwen3.6-plus", "max_tokens": 100, "messages": [{"role": "user", "content": "Hello"}]}'
+  -d '{"model": "qwen3.6-plus", "max_tokens": 100, "messages": [{"role": "user", "content": "你好"}]}'
 
-# With streaming
+# 流式请求
 curl -X POST http://localhost:4141/v1/messages \
   -H "Content-Type: application/json" \
   -H "x-api-key: your-opencode-go-key" \
-  -d '{"model": "qwen3.6-plus", "max_tokens": 100, "messages": [{"role": "user", "content": "Hello, how are you?"}], "stream": true}'
+  -d '{"model": "qwen3.6-plus", "max_tokens": 100, "messages": [{"role": "user", "content": "你好"}], "stream": true}'
 ```
 
-### With curl (OpenAI format)
+### OpenAI 格式调用
 
 ```bash
 curl -X POST http://localhost:4141/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer your-opencode-go-key" \
-  -d '{"model": "qwen3.6-plus", "max_tokens": 100, "messages": [{"role": "user", "content": "Hello"}]}'
+  -d '{"model": "qwen3.6-plus", "max_tokens": 100, "messages": [{"role": "user", "content": "你好"}]}'
 ```
 
-### With tools
+### 工具调用示例
 
 ```bash
 curl -X POST http://localhost:4141/v1/messages \
@@ -112,89 +112,80 @@ curl -X POST http://localhost:4141/v1/messages \
     "max_tokens": 200,
     "tools": [{
       "name": "get_weather",
-      "description": "Get the current weather for a location",
+      "description": "获取某个地点的当前天气",
       "input_schema": {
         "type": "object",
         "properties": {
-          "location": {"type": "string", "description": "City name"}
+          "location": {"type": "string", "description": "城市名称"}
         },
         "required": ["location"]
       }
     }],
-    "messages": [{"role": "user", "content": "What is the weather in Tokyo?"}]
+    "messages": [{"role": "user", "content": "东京的天气怎么样？"}]
   }'
 ```
 
-## Environment Variables
+## 环境变量
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OPENCODE_GO_API_KEY` | Fallback API key if client doesn't provide one | - |
-| `OPENCODE_GO_BASE_URL` | OpenCode Go API base URL | `https://opencode.ai/zen/go/v1` |
-| `OPENCODE_MODEL` | Default model to use | `qwen3.6-plus` |
-| `PROXY_PORT` | Proxy listen port | `4141` |
-| `RATE_LIMIT_ENABLED` | Enable rate limiting | `false` |
-| `RATE_LIMIT_WINDOW_MS` | Rate limit window in milliseconds | `60000` |
-| `RATE_LIMIT_MAX` | Max requests per window | `30` |
+| 变量 | 说明 | 默认值 |
+|------|------|--------|
+| `OPENCODE_GO_API_KEY` | 备用 API Key（客户端未提供时使用） | - |
+| `OPENCODE_GO_BASE_URL` | OpenCode Go API 基础地址 | `https://opencode.ai/zen/go/v1` |
+| `OPENCODE_MODEL` | 默认模型 | `qwen3.6-plus` |
+| `PROXY_PORT` | 代理监听端口 | `4141` |
+| `RATE_LIMIT_ENABLED` | 启用速率限制 | `false` |
+| `RATE_LIMIT_WINDOW_MS` | 速率限制时间窗口（毫秒） | `60000` |
+| `RATE_LIMIT_MAX` | 窗口内最大请求数 | `30` |
 
-**API Key resolution order:**
+**API Key 解析优先级：**
 
-1. `x-api-key` HTTP header
-2. `Authorization: Bearer <key>` HTTP header
-3. `OPENCODE_GO_API_KEY` environment variable
+1. `x-api-key` HTTP 请求头
+2. `Authorization: Bearer <key>` HTTP 请求头
+3. `OPENCODE_GO_API_KEY` 环境变量
 
-## API Endpoints
+## API 接口
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/v1/messages` | POST | Anthropic Messages API — streaming, tool use, text+image |
-| `/v1/messages/count_tokens` | POST | Token estimation |
+| 端点 | 方法 | 说明 |
+|------|------|------|
+| `/v1/messages` | POST | Anthropic Messages API — 流式、工具调用、图文混合 |
+| `/v1/messages/count_tokens` | POST | Token 估算 |
 | `/v1/chat/completions` | POST | OpenAI Chat Completions API |
 | `/v1/embeddings` | POST | OpenAI Embeddings API |
-| `/v1/models` | GET | List available models |
-| `/health` | GET | Health check |
+| `/v1/models` | GET | 列出可用模型 |
+| `/health` | GET | 健康检查 |
 
-## Architecture
-
-```
-┌─────────────┐     Anthropic Format      ┌─────────────────┐     OpenAI Format       ┌──────────────────┐
-│  Claude Code │ ────────────────────────> │  opencode-api   │ ──────────────────────> │  opencode.ai     │
-│  (or curl)   │ <──────────────────────── │  port 4141      │ <────────────────────── │  /zen/go/v1      │
-└─────────────┘     Anthropic Format       └─────────────────┘     OpenAI Format         └──────────────────┘
-```
-
-## Project Structure
+## 项目结构
 
 ```
 src/
-  index.ts       — Express app setup, routes, server start
-  config.ts      — Configuration, environment variables, model list
-  types.ts       — TypeScript type definitions
-  logger.ts      — Logging utilities with color output
-  translate.ts   — Anthropic ↔ OpenAI message/tool translation
-  stream.ts      — SSE stream translation (OpenAI chunk → Anthropic event)
-  opencode.ts    — OpenCode Go API client and model routing
+  index.ts       — Express 应用、路由、服务器启动
+  config.ts      — 配置、环境变量、模型列表
+  types.ts       — TypeScript 类型定义
+  logger.ts      — 带颜色的日志工具
+  translate.ts   — Anthropic ↔ OpenAI 消息/工具翻译
+  stream.ts      — SSE 流翻译（OpenAI 块 → Anthropic 事件）
+  opencode.ts    — OpenCode Go API 客户端和模型路由
 ```
 
-## CLI Commands
+## CLI 命令
 
-| Command | Description |
-|---------|-------------|
-| `opencode-api start` | Start the proxy server |
-| `opencode-api --help` | Show help |
+| 命令 | 说明 |
+|------|------|
+| `opencode-api start` | 启动代理服务器 |
+| `opencode-api --help` | 显示帮助 |
 
-## Testing
+## 测试
 
 ```bash
-# Start proxy first
+# 先启动代理
 npm run dev
 
-# Run tests in another terminal
+# 在另一个终端运行测试
 npm test
 ```
 
-The test suite covers: health check, model listing, non-streaming messages, streaming messages, system message handling, auth enforcement, token counting, OpenAI-format completions (both streaming and non-streaming).
+测试覆盖：健康检查、模型列表、非流式/流式消息、系统消息、认证检查、Token 计数、OpenAI 格式接口。
 
-## License
+## 许可证
 
 MIT
