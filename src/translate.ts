@@ -216,8 +216,8 @@ export function buildOpenAIRequest(request: AnthropicRequest, upstreamModel?: st
     stream: request.stream,
   };
 
-  // DeepSeek requires enable_thinking to be set for reasoning/thinking models
-  if (model.toLowerCase().includes('deepseek')) {
+  // Enable thinking/reasoning when client requests it or model requires it
+  if (request.thinking?.type === 'enabled' || model.toLowerCase().includes('deepseek')) {
     openAIRequest.enable_thinking = true;
   }
 

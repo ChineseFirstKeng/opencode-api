@@ -259,8 +259,42 @@ async function handleUpstreamError(res: Response, response: globalThis.Response)
   if (response.ok) return false;
   const errorText = await response.text();
   log('← OPENCODE', `Error ${response.status}: ${errorText}`, COLORS.red);
-  res.status(response.status).json({ error: { type: 'api_error', message: errorText } });
+
+  // Translate OpenAI-format errors to Anthropic format
+  let anthropicError: { type: string; message: string };
+  try {
+    const parsed = JSON.parse(errorText);
+    const openAIError = parsed?.error || parsed;
+    if (typeof openAIError === 'object' && openAIError.message) {
+      anthropicError = {
+        type: translateErrorType(openAIError.type || openAIError.code || 'api_error'),
+        message: openAIError.message,
+      };
+    } else {
+      throw new Error('not a structured error');
+    }
+  } catch {
+    anthropicError = { type: 'api_error', message: errorText };
+  }
+
+  res.status(response.status).json({ error: anthropicError });
   return true;
+}
+
+function translateErrorType(openAIErrorType: string): string {
+  const map: Record<string, string> = {
+    'invalid_request_error': 'invalid_request_error',
+    'authentication_error': 'authentication_error',
+    'permission_error': 'permission_error',
+    'not_found': 'not_found',
+    'rate_limit_error': 'rate_limit_error',
+    'rate_limit': 'rate_limit_error',
+    'insufficient_quota': 'permission_error',
+    'server_error': 'api_error',
+    'api_error': 'api_error',
+    'context_length_exceeded': 'invalid_request_error',
+  };
+  return map[openAIErrorType] || 'api_error';
 }
 
 // ── POST /v1/messages ──────────────────────────────────────────────
