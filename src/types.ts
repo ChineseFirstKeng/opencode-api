@@ -48,6 +48,7 @@ export interface OpenAIToolCall {
 export interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> | null;
+  reasoning_content?: string | null;
   tool_calls?: OpenAIToolCall[];
   tool_call_id?: string;
 }
@@ -73,6 +74,7 @@ export interface OpenAIRequest {
   user?: string;
   tools?: OpenAITool[];
   tool_choice?: string | { type: 'function'; function: { name: string } };
+  enable_thinking?: boolean;
 }
 
 // ── OpenAI Response Types ──────────────────────────────────────────
@@ -141,6 +143,7 @@ export interface AnthropicStreamState {
   messageStartSent: boolean;
   contentBlockIndex: number;
   contentBlockOpen: boolean;
+  currentBlockType?: 'text' | 'thinking' | 'tool';
   finished: boolean;
   toolCalls: Record<number, { id: string; name: string; anthropicBlockIndex: number }>;
 }

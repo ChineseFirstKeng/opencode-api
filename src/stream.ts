@@ -2,9 +2,17 @@ import type { AnthropicStreamState, OpenAIStreamChunk } from './types';
 
 function isToolBlockOpen(state: AnthropicStreamState): boolean {
   if (!state.contentBlockOpen) return false;
+  if (state.currentBlockType !== 'tool') return false;
   return Object.values(state.toolCalls).some(
     (tc) => tc.anthropicBlockIndex === state.contentBlockIndex,
   );
+}
+
+function closeContentBlock(state: AnthropicStreamState): Record<string, unknown> | null {
+  if (!state.contentBlockOpen) return null;
+  state.contentBlockOpen = false;
+  state.currentBlockType = undefined;
+  return { type: 'content_block_stop', index: state.contentBlockIndex };
 }
 
 function mapOpenAIStopReasonToAnthropic(reason: string | null): string {
@@ -56,12 +64,47 @@ export function translateOpenAIChunkToAnthropicEvents(
     state.messageStartSent = true;
   }
 
+  // Handle reasoning_content → thinking blocks
+  if (delta?.reasoning_content) {
+    if (state.contentBlockOpen && state.currentBlockType !== 'thinking') {
+      const close = closeContentBlock(state);
+      if (close) {
+        state.contentBlockIndex++;
+        events.push(close);
+      }
+    }
+    if (!state.contentBlockOpen) {
+      events.push({
+        type: 'content_block_start',
+        index: state.contentBlockIndex,
+        content_block: { type: 'thinking', thinking: '' },
+      });
+      state.contentBlockOpen = true;
+      state.currentBlockType = 'thinking';
+    }
+    events.push({
+      type: 'content_block_delta',
+      index: state.contentBlockIndex,
+      delta: { type: 'thinking_delta', thinking: delta.reasoning_content },
+    });
+  }
+
   // Handle text content
   if (delta?.content) {
+    // Close thinking block if switching to text
+    if (state.contentBlockOpen && state.currentBlockType === 'thinking') {
+      const close = closeContentBlock(state);
+      if (close) {
+        state.contentBlockIndex++;
+        events.push(close);
+      }
+    }
     if (isToolBlockOpen(state)) {
-      events.push({ type: 'content_block_stop', index: state.contentBlockIndex });
-      state.contentBlockIndex++;
-      state.contentBlockOpen = false;
+      const close = closeContentBlock(state);
+      if (close) {
+        state.contentBlockIndex++;
+        events.push(close);
+      }
     }
     if (!state.contentBlockOpen) {
       events.push({
@@ -70,6 +113,7 @@ export function translateOpenAIChunkToAnthropicEvents(
         content_block: { type: 'text', text: '' },
       });
       state.contentBlockOpen = true;
+      state.currentBlockType = 'text';
     }
     events.push({
       type: 'content_block_delta',
@@ -83,9 +127,11 @@ export function translateOpenAIChunkToAnthropicEvents(
     for (const toolCall of delta.tool_calls) {
       if (toolCall.id && toolCall.function?.name) {
         if (state.contentBlockOpen) {
-          events.push({ type: 'content_block_stop', index: state.contentBlockIndex });
-          state.contentBlockIndex++;
-          state.contentBlockOpen = false;
+          const close = closeContentBlock(state);
+          if (close) {
+            state.contentBlockIndex++;
+            events.push(close);
+          }
         }
         const anthropicBlockIndex = state.contentBlockIndex;
         state.toolCalls[toolCall.index] = {
@@ -104,6 +150,7 @@ export function translateOpenAIChunkToAnthropicEvents(
           },
         });
         state.contentBlockOpen = true;
+        state.currentBlockType = 'tool';
       }
       if (toolCall.function?.arguments) {
         const toolCallInfo = state.toolCalls[toolCall.index];
@@ -126,6 +173,7 @@ export function translateOpenAIChunkToAnthropicEvents(
     if (state.contentBlockOpen) {
       events.push({ type: 'content_block_stop', index: state.contentBlockIndex });
       state.contentBlockOpen = false;
+      state.currentBlockType = undefined;
     }
 
     const promptTokens = chunk.usage?.prompt_tokens ?? 0;

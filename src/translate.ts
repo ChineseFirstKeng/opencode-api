@@ -10,6 +10,7 @@ import type {
   OpenAITool,
   OpenAIToolCall,
 } from './types';
+import { NO_VISION } from './config';
 
 // ── Request: Anthropic → OpenAI ────────────────────────────────────
 
@@ -41,7 +42,9 @@ export function extractSystemMessage(request: AnthropicRequest): string {
 
 function convertContentBlocks(
   blocks: AnthropicContentBlock[],
+  model: string,
 ): string | Array<{ type: string; text?: string; image_url?: { url: string } }> {
+  const supportsVision = !NO_VISION.has(model);
   const hasImage = blocks.some((b) => b.type === 'image');
   const parts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
 
@@ -51,12 +54,19 @@ function convertContentBlocks(
     } else if (block.type === 'thinking') {
       parts.push({ type: 'text', text: block.thinking || '' });
     } else if (block.type === 'image' && block.source) {
-      parts.push({
-        type: 'image_url',
-        image_url: {
-          url: `data:${block.source.media_type || 'image/jpeg'};base64,${block.source.data}`,
-        },
-      });
+      if (supportsVision) {
+        parts.push({
+          type: 'image_url',
+          image_url: {
+            url: `data:${block.source.media_type || 'image/jpeg'};base64,${block.source.data}`,
+          },
+        });
+      } else {
+        parts.push({
+          type: 'text',
+          text: 'ERROR: Image input is not supported for the selected model. Please choose a vision-capable model.',
+        });
+      }
     }
   }
 
@@ -64,7 +74,7 @@ function convertContentBlocks(
   return parts.map((p) => p.text).join('\n\n');
 }
 
-export function convertToOpenAIMessages(request: AnthropicRequest): OpenAIMessage[] {
+export function convertToOpenAIMessages(request: AnthropicRequest, model: string): OpenAIMessage[] {
   const messages: OpenAIMessage[] = [];
   const systemMessage = extractSystemMessage(request);
 
@@ -75,9 +85,10 @@ export function convertToOpenAIMessages(request: AnthropicRequest): OpenAIMessag
   for (const msg of request.messages) {
     if (msg.role === 'system') continue;
 
-    // Assistant: tool_use → tool_calls
+    // Assistant: tool_use → tool_calls, thinking → reasoning_content
     if (msg.role === 'assistant' && Array.isArray(msg.content)) {
       const textBlocks: string[] = [];
+      const thinkingBlocks: string[] = [];
       const toolCalls: OpenAIToolCall[] = [];
 
       for (const block of msg.content) {
@@ -86,7 +97,7 @@ export function convertToOpenAIMessages(request: AnthropicRequest): OpenAIMessag
             if (block.text) textBlocks.push(block.text);
             break;
           case 'thinking':
-            textBlocks.push(block.thinking || '');
+            thinkingBlocks.push(block.thinking || '');
             break;
           case 'tool_use':
             toolCalls.push({
@@ -101,9 +112,12 @@ export function convertToOpenAIMessages(request: AnthropicRequest): OpenAIMessag
         }
       }
 
+      const combinedThinking = thinkingBlocks.join('\n\n');
+
       messages.push({
         role: 'assistant',
         content: textBlocks.join('\n\n') || null,
+        reasoning_content: combinedThinking || undefined,
         tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
       });
       continue;
@@ -137,7 +151,7 @@ export function convertToOpenAIMessages(request: AnthropicRequest): OpenAIMessag
       if (otherBlocks.length > 0) {
         messages.push({
           role: 'user',
-          content: convertContentBlocks(otherBlocks),
+          content: convertContentBlocks(otherBlocks, model),
         });
       }
       continue;
@@ -152,7 +166,7 @@ export function convertToOpenAIMessages(request: AnthropicRequest): OpenAIMessag
     // Array content (text/image only, no tool blocks)
     messages.push({
       role: msg.role as 'user' | 'assistant',
-      content: convertContentBlocks(msg.content as any),
+      content: convertContentBlocks(msg.content as any, model),
     });
   }
 
@@ -195,11 +209,17 @@ export function convertToolChoice(
 }
 
 export function buildOpenAIRequest(request: AnthropicRequest, upstreamModel?: string): OpenAIRequest {
+  const model = upstreamModel || request.model;
   const openAIRequest: OpenAIRequest = {
-    model: upstreamModel || request.model,
-    messages: convertToOpenAIMessages(request),
+    model,
+    messages: convertToOpenAIMessages(request, model),
     stream: request.stream,
   };
+
+  // DeepSeek requires enable_thinking to be set for reasoning/thinking models
+  if (model.toLowerCase().includes('deepseek')) {
+    openAIRequest.enable_thinking = true;
+  }
 
   if (request.max_tokens) openAIRequest.max_tokens = request.max_tokens;
   if (request.temperature !== undefined) openAIRequest.temperature = request.temperature;
@@ -221,8 +241,12 @@ export function convertToAnthropicResponse(
 ): Record<string, unknown> {
   const choice = openAIResponse.choices[0];
   const content = choice?.message?.content || '';
+  const reasoningContent = (choice?.message as any)?.reasoning_content || '';
 
   const contentBlocks: Array<Record<string, unknown>> = [];
+  if (reasoningContent) {
+    contentBlocks.push({ type: 'thinking', thinking: reasoningContent });
+  }
   if (content) {
     contentBlocks.push({ type: 'text', text: content });
   }

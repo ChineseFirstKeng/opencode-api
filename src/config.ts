@@ -30,7 +30,13 @@ export const ALL_MODELS = [
   'deepseek-v4-flash',
 ];
 
-const ANTHROPIC_NATIVE = new Set(['minimax-m2.7', 'minimax-m2.5', 'deepseek-v4-pro', 'deepseek-v4-flash']);
+const ANTHROPIC_NATIVE = new Set(['minimax-m2.7', 'minimax-m2.5']);
+
+// Models that do NOT support vision/image input. Add new text-only models here.
+export const NO_VISION = new Set([
+  'deepseek-v4-pro',
+  'deepseek-v4-flash',
+]);
 
 export function getModelEndpoint(model: string): string {
   if (ANTHROPIC_NATIVE.has(model)) {

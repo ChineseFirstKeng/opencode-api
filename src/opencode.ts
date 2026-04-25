@@ -7,13 +7,24 @@ async function apiFetch(endpoint: string, body: unknown, model: string, isAnthro
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${key}`,
+    'x-api-key': key,
+    'x-anthropic-version': '2023-06-01',
   };
 
-  if (isAnthropic) {
-    headers['anthropic-version'] = '2023-06-01';
+  const maskedHeaders: Record<string, string> = {};
+  for (const [k, v] of Object.entries(headers)) {
+    if (k === 'Authorization') {
+      maskedHeaders[k] = 'Bearer ***' + v.slice(-4);
+    } else if (k === 'x-api-key') {
+      maskedHeaders[k] = '***' + v.slice(-4);
+    } else {
+      maskedHeaders[k] = v;
+    }
   }
 
-  log('→ OPENCODE', `POST ${endpoint} [Model: ${model}]`, COLORS.magenta);
+  log('→ OPENCODE', `POST ${endpoint}`, COLORS.magenta);
+  log('  MODEL', `${model} (isAnthropic: ${isAnthropic})`, COLORS.magenta);
+  log('  HEADERS', JSON.stringify(maskedHeaders), COLORS.dim);
   log('  BODY', formatBody(body), COLORS.dim);
 
   return fetch(endpoint, {
