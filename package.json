@@ -1,6 +1,6 @@
 {
   "name": "opencode-api",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Proxy service that translates Anthropic API format to OpenCode Go API format. Use OpenCode models with Claude Code and other Anthropic-compatible tools.",
   "main": "dist/index.js",
   "bin": {
