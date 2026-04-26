@@ -116,8 +116,8 @@ export function convertToOpenAIMessages(request: AnthropicRequest, model: string
 
       messages.push({
         role: 'assistant',
-        content: textBlocks.join('\n\n') || null,
-        reasoning_content: combinedThinking || undefined,
+        content: textBlocks.join('\n\n') || '',
+        reasoning_content: combinedThinking,
         tool_calls: toolCalls.length > 0 ? toolCalls : undefined,
       });
       continue;
@@ -164,10 +164,15 @@ export function convertToOpenAIMessages(request: AnthropicRequest, model: string
     }
 
     // Array content (text/image only, no tool blocks)
-    messages.push({
+    const convertedContent = convertContentBlocks(msg.content as any, model);
+    const msgObj: OpenAIMessage = {
       role: msg.role as 'user' | 'assistant',
-      content: convertContentBlocks(msg.content as any, model),
-    });
+      content: convertedContent,
+    };
+    if (msg.role === 'assistant' && typeof convertedContent === 'string') {
+      msgObj.reasoning_content = '';
+    }
+    messages.push(msgObj);
   }
 
   return messages;
@@ -216,8 +221,14 @@ export function buildOpenAIRequest(request: AnthropicRequest, upstreamModel?: st
     stream: request.stream,
   };
 
-  // Enable thinking/reasoning when client requests it or model requires it
-  if (request.thinking?.type === 'enabled' || model.toLowerCase().includes('deepseek')) {
+  // DeepSeek requires reasoning_content to be present when enable_thinking is true.
+  // For non-DeepSeek models or when client explicitly requests thinking, enable it.
+  // For DeepSeek without prior reasoning history, skip enable_thinking to avoid
+  // "reasoning_content must be passed back" errors on first-turn requests.
+  const hasReasoningHistory = openAIRequest.messages.some(
+    (m) => (m as any).reasoning_content,
+  );
+  if (request.thinking?.type === 'enabled' || (model.toLowerCase().includes('deepseek') && hasReasoningHistory)) {
     openAIRequest.enable_thinking = true;
   }
 

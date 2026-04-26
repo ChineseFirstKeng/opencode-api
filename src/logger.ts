@@ -14,7 +14,7 @@ export function log(tag: string, msg: string, color: string = COLORS.reset) {
   console.log(`${COLORS.dim}[${time}]${COLORS.reset} ${color}${tag}${COLORS.reset} ${msg}`);
 }
 
-export function formatBody(body: unknown, maxLength = 500): string {
+export function formatBody(body: unknown, maxLength = 50000): string {
   const str = typeof body === 'string' ? body : JSON.stringify(body, null, 2);
   if (str.length > maxLength) {
     return str.slice(0, maxLength) + '...';
