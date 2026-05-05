@@ -378,17 +378,6 @@ app.post('/v1/messages', rateLimitMiddleware, async (req: Request, res: Response
   }
 });
 
-// ── POST /v1/messages/count_tokens ─────────────────────────────────
-
-app.post('/v1/messages/count_tokens', (_req: Request, res: Response) => {
-  // Rough estimation: ~4 chars per token for Chinese/English mixed text
-  // This is adequate for the proxy use case
-  const body = _req.body || {};
-  const text = JSON.stringify(body);
-  const estimatedTokens = Math.ceil(text.length / 4);
-  return res.json({ input_tokens: estimatedTokens });
-});
-
 // ── POST /v1/chat/completions (OpenAI-compatible) ──────────────────
 
 app.post('/v1/chat/completions', rateLimitMiddleware, async (req: Request, res: Response) => {
@@ -521,11 +510,18 @@ app.get('/health', (_req: Request, res: Response) => {
 
 // ── Start Server ───────────────────────────────────────────────────
 
-app.listen(config.port, () => {
-  console.log(`\n${COLORS.bold}${COLORS.cyan}OpenCode Anthropic Proxy running on port ${config.port}${COLORS.reset}`);
+const cliPort =
+  process.argv.indexOf('--port') !== -1
+    ? parseInt(process.argv[process.argv.indexOf('--port') + 1], 10)
+    : undefined;
+
+const port = cliPort || config.port;
+
+app.listen(port, () => {
+  console.log(`\n${COLORS.bold}${COLORS.cyan}OpenCode Anthropic Proxy running on port ${port}${COLORS.reset}`);
   console.log(`${COLORS.cyan}OpenCode Go API: ${config.baseUrl}${COLORS.reset}`);
   console.log(`${COLORS.cyan}Default model: ${config.defaultModel}${COLORS.reset}`);
-  console.log(`${COLORS.cyan}Health check: http://localhost:${config.port}/health${COLORS.reset}`);
+  console.log(`${COLORS.cyan}Health check: http://localhost:${port}/health${COLORS.reset}`);
   if (config.rateLimit.enabled) {
     console.log(`${COLORS.yellow}Rate limit: ${config.rateLimit.maxRequests} req / ${config.rateLimit.windowMs}ms${COLORS.reset}`);
   }

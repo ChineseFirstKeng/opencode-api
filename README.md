@@ -1,5 +1,5 @@
 <p align="right">
-  <strong>中文</strong> | <a href="README.md">English</a>
+  <strong>中文</strong> | <a href="README.en.md">English</a>
 </p>
 
 # opencode-api
@@ -10,13 +10,12 @@
 
 - **Anthropic ↔ OpenAI 格式转换** — 将 Anthropic Messages API 请求转为 OpenAI Chat Completions 格式，再将响应转回
 - **流式 SSE 翻译** — 实时逐块翻译流式响应，完整保留 Anthropic 事件语义
-- **双路径路由** — 原生 Anthropic 模型（MiniMax）直接转发；其余模型通过 OpenAI 路径翻译
+- **双路径路由** — MiniMax 原生 Anthropic 模型（minimax-m2.7、minimax-m2.5）直接转发；其余模型通过 OpenAI 路径翻译
 - **工具调用** — 完整支持 Anthropic tool_use ↔ OpenAI function calls，包括 `tool_choice` 映射
 - **OpenAI 兼容端点** — `/v1/chat/completions` 供原生 OpenAI 客户端使用
 - **Embeddings 支持** — `/v1/embeddings` 透传到 OpenCode
 - **图片支持** — Anthropic 内容块中的 Base64 图片自动转为 OpenAI image_url 格式
-- **思考/推理** — 保留并翻译 thinking 块
-- **Token 估算** — `count_tokens` 真实估算而非固定返回 0
+- **思考/推理** — 保留并翻译 thinking 块，DeepSeek 模型根据推理历史智能启用 `enable_thinking`
 - **频率限制** — 可选的可配置速率限制器
 - **灵活认证** — 支持通过 `x-api-key` 头、`Authorization: Bearer` 头或环境变量传入 API Key
 
@@ -148,7 +147,6 @@ curl -X POST http://localhost:4141/v1/messages \
 | 端点 | 方法 | 说明 |
 |------|------|------|
 | `/v1/messages` | POST | Anthropic Messages API — 流式、工具调用、图文混合 |
-| `/v1/messages/count_tokens` | POST | Token 估算 |
 | `/v1/chat/completions` | POST | OpenAI Chat Completions API |
 | `/v1/embeddings` | POST | OpenAI Embeddings API |
 | `/v1/models` | GET | 列出可用模型 |
@@ -172,6 +170,7 @@ src/
 | 命令 | 说明 |
 |------|------|
 | `opencode-api start` | 启动代理服务器 |
+| `opencode-api start --port <port>` | 指定端口启动 |
 | `opencode-api --help` | 显示帮助 |
 
 ## 测试
@@ -184,7 +183,8 @@ npm run dev
 npm test
 ```
 
-测试覆盖：健康检查、模型列表、非流式/流式消息、系统消息、认证检查、Token 计数、OpenAI 格式接口。
+集成测试（`test/test.ts`）：健康检查、模型列表、非流式/流式消息、系统消息、认证检查、OpenAI 格式接口（非流式+流式）。
+单元测试（`test/reasoning_role.ts`）：thinking 块转 reasoning_content、DeepSeek 首轮/多轮 enable_thinking 逻辑。
 
 ## 许可证
 

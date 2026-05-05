@@ -4,7 +4,26 @@ const { spawn } = require('child_process');
 const path = require('path');
 
 const args = process.argv.slice(2);
-const command = args[0];
+
+// Parse --port from args and set env var so config.ts picks it up
+let portFromArgs;
+const remaining = [];
+for (let i = 0; i < args.length; i++) {
+  if (args[i] === '--port' && i + 1 < args.length) {
+    portFromArgs = args[i + 1];
+    i++;
+  } else if (args[i].startsWith('--port=')) {
+    portFromArgs = args[i].split('=')[1];
+  } else {
+    remaining.push(args[i]);
+  }
+}
+
+if (portFromArgs) {
+  process.env.PROXY_PORT = portFromArgs;
+}
+
+const command = remaining[0];
 
 if (command === 'start' || !command) {
   const serverPath = path.join(__dirname, '..', 'dist', 'index.js');
@@ -30,16 +49,16 @@ Use OpenCode models with Claude Code and other Anthropic-compatible tools.
 
 Endpoints:
   POST /v1/messages              Anthropic Messages API
-  POST /v1/messages/count_tokens Token counting
   POST /v1/chat/completions      OpenAI Chat Completions API
   POST /v1/embeddings            OpenAI Embeddings API
   GET  /v1/models                List available models
   GET  /health                   Health check
 
 Usage:
-  opencode-api start              Start the proxy server
-  opencode-api                    (same as start)
-  opencode-api --help             Show this help message
+  opencode-api start                  Start the proxy server
+  opencode-api start --port 8080  Start on a custom port
+  opencode-api                        (same as start)
+  opencode-api --help                 Show this help message
 
 Environment Variables:
   OPENCODE_GO_API_KEY     OpenCode Go API key (fallback if client doesn't provide one)
@@ -68,6 +87,7 @@ Available Models:
 
 Example:
   opencode-api start
+  opencode-api start --port 8080
 
 Claude Code Integration:
   ANTHROPIC_BASE_URL=http://localhost:4141 \\

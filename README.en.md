@@ -1,5 +1,5 @@
 <p align="right">
-  <a href="README.zh.md">中文</a> | <strong>English</strong>
+  <a href="README.md">中文</a> | <strong>English</strong>
 </p>
 
 # opencode-api
@@ -10,13 +10,12 @@ Proxy service that translates Anthropic API format to OpenCode Go API format. Us
 
 - **Anthropic ↔ OpenAI format translation** — Converts Anthropic Messages API requests to OpenAI Chat Completions format and translates responses back
 - **Streaming SSE translation** — Real-time chunk-by-chunk translation of streaming responses with full Anthropic event semantics
-- **Dual-path routing** — Anthropic-native models (MiniMax) forwarded as-is; all other models translated through OpenAI path
+- **Dual-path routing** — MiniMax Anthropic-native models (minimax-m2.7, minimax-m2.5) forwarded as-is; all others translated through OpenAI path
 - **Tool use / Function calling** — Full support for Anthropic tool_use → OpenAI function calls and back, including `tool_choice` mapping
 - **OpenAI-compatible endpoint** — `/v1/chat/completions` for tools that speak OpenAI format natively
 - **Embeddings support** — `/v1/embeddings` passthrough to OpenCode
 - **Image support** — Base64 images in Anthropic content blocks converted to OpenAI image_url format
-- **Thinking / Reasoning** — Thinking blocks preserved and translated
-- **Token estimation** — Realistic `count_tokens` estimation
+- **Thinking / Reasoning** — Thinking blocks preserved and translated; DeepSeek models smartly enable `enable_thinking` based on reasoning history
 - **Rate limiting** — Optional configurable rate limiter
 - **Flexible auth** — API key accepted via `x-api-key` header, `Authorization: Bearer` header, or environment variable
 
@@ -148,7 +147,6 @@ curl -X POST http://localhost:4141/v1/messages \
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/v1/messages` | POST | Anthropic Messages API — streaming, tool use, text+image |
-| `/v1/messages/count_tokens` | POST | Token estimation |
 | `/v1/chat/completions` | POST | OpenAI Chat Completions API |
 | `/v1/embeddings` | POST | OpenAI Embeddings API |
 | `/v1/models` | GET | List available models |
@@ -181,6 +179,7 @@ src/
 | Command | Description |
 |---------|-------------|
 | `opencode-api start` | Start the proxy server |
+| `opencode-api start --port <port>` | Start on a custom port |
 | `opencode-api --help` | Show help |
 
 ## Testing
@@ -193,7 +192,7 @@ npm run dev
 npm test
 ```
 
-The test suite covers: health check, model listing, non-streaming messages, streaming messages, system message handling, auth enforcement, token counting, OpenAI-format completions (both streaming and non-streaming).
+The test suite covers: health check, model listing, non-streaming messages, streaming messages, system message handling, auth enforcement, OpenAI-format completions (both streaming and non-streaming). Unit tests (`test/reasoning_role.ts`) cover reasoning_content translation and DeepSeek enable_thinking logic.
 
 ## License
 

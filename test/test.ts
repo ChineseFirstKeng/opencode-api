@@ -250,26 +250,6 @@ async function testAuthFailure() {
   return true;
 }
 
-async function testCountTokens() {
-  console.log('\n=== Test: Count Tokens ===');
-  const response = await fetch(`${BASE_URL}/v1/messages/count_tokens`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': API_KEY,
-    },
-    body: JSON.stringify({
-      model: 'qwen3.6-plus',
-      messages: [{ role: 'user', content: 'Hello, world!' }],
-    }),
-  });
-
-  assert(response.ok, `Status ${response.status}`);
-  const data = await response.json();
-  assert(typeof data.input_tokens === 'number', 'Returns input_tokens number');
-  return true;
-}
-
 async function runTests() {
   console.log('Starting OpenCode Anthropic Proxy Tests...');
   console.log('Proxy URL:', BASE_URL);
@@ -278,7 +258,6 @@ async function runTests() {
     testHealth,
     testModels,
     testAuthFailure,
-    testCountTokens,
     testChatCompletions,
     testChatCompletionsStream,
   ];
